@@ -220,38 +220,23 @@ def balanza_comprobacion(request):
 
         # Calcular saldos para todas las cuentas
         for cuenta in cuentas:
-            # Filtrar transacciones para la cuenta actual
-            transacciones_debe = transacciones.filter(id_cuenta_cargo_id=cuenta.id_cuenta)
-            transacciones_haber = transacciones.filter(id_cuenta_abono_id=cuenta.id_cuenta)
+            detalles = DetalleTransaccion.objects.filter(
+                cuenta=cuenta,
+                transaccion__fecha_transaccion__month=mes,
+                transaccion__fecha_transaccion__year=año
+            )
 
-            # Filtrar por mes y año, si se proporcionan
-            if mes and año:
-                transacciones_debe = transacciones_debe.filter(
-                    fecha_transaccion__month=mes,
-                    fecha_transaccion__year=año
-                )
-                transacciones_haber = transacciones_haber.filter(
-                    fecha_transaccion__month=mes,
-                    fecha_transaccion__year=año
-                )
+            saldo_debe = sum(d.monto for d in detalles.filter(es_debe=True))
+            saldo_haber = sum(d.monto for d in detalles.filter(es_debe=False))
 
-            # Calcular los montos totales
-            total_debe_cuenta = sum(t.monto_transaccion for t in transacciones_debe)
-            total_haber_cuenta = sum(t.monto_transaccion for t in transacciones_haber)
-
-            # Calcular saldo_deudor y saldo_acreedor
-            saldo_deudor = total_debe_cuenta - total_haber_cuenta if total_debe_cuenta > total_haber_cuenta else 0
-            saldo_acreedor = total_haber_cuenta - total_debe_cuenta if total_haber_cuenta > total_debe_cuenta else 0
-
-            # Almacenar en el diccionario
-            cuentas_saldos[cuenta.nombre_cuenta] = {
-                'saldo_deudor': saldo_deudor,
-                'saldo_acreedor': saldo_acreedor
-            }
-
-            # Sumar al total
-            total_debe += saldo_deudor
-            total_haber += saldo_acreedor
+            # Solo incluir la cuenta si tiene saldos mayores que cero
+            if saldo_debe > 0 or saldo_haber > 0:
+                cuentas_saldos[cuenta.nombre_cuenta] = {
+                    'saldo_deudor': saldo_debe,
+                    'saldo_acreedor': saldo_haber
+                }
+                total_debe += saldo_debe
+                total_haber += saldo_haber
 
     return render(request, 'balanza_comprobacion.html', {
         'cuentas': cuentas,
