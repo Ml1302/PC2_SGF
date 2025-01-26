@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block title %}Estado de Resultados{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Estado de Resultados</h1>
+    <form method="POST" action="" class="mb-5">
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label for="mes" class="form-label">Selecciona el mes:</label>
+                <select id="mes" name="mes" class="form-select">
+                    <option value="">Seleccione el mes</option>
+                    {% for m in meses %}
+                    <option value="{{ m.0 }}" {% if m.0 == mes_seleccionado %}selected{% endif %}>{{ m.1 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label for="año" class="form-label">Selecciona el año:</label>
+                <select id="año" name="año" class="form-select">
+                    <option value="">Seleccione el año</option>
+                    {% for a in años %}
+                    <option value="{{ a.0 }}" {% if a.0 == año_seleccionado %}selected{% endif %}>{{ a.1 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Aceptar</button>
+            </div>
+        </div>
+    </form>
+
+    {% if cuentas_ingresos or cuentas_gastos %}
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-bordered table-hover table-striped align-middle text-center">
+            <thead class="table-dark">
+                <tr>
+                    <th>Cuenta</th>
+                    <th>Debe (S/)</th>
+                    <th>Haber (S/)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Sección de Ingresos -->
+                <tr class="table-primary fw-bold">
+                    <td colspan="3">Ingresos</td>
+                </tr>
+                {% for nombre_cuenta, saldos in cuentas_ingresos.items %}
+                    {% if saldos.saldo_deudor != 0 or saldos.saldo_acreedor != 0 %}
+                    <tr>
+                        <td class="text-start">{{ nombre_cuenta }}</td>
+                        <td class="text-end">
+                            {% if saldos.saldo_deudor == 0 %}
+                                <span class="text-muted">-</span>
+                            {% else %}
+                                {{ saldos.saldo_deudor|floatformat:2 }}
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if saldos.saldo_acreedor == 0 %}
+                                <span class="text-muted">-</span>
+                            {% else %}
+                                {{ saldos.saldo_acreedor|floatformat:2 }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+                <tr class="table-secondary fw-bold">
+                    <td class="text-start">Ingresos Totales</td>
+                    <td></td>
+                    <td class="text-end">{{ total_ingresos|floatformat:2 }}</td>
+                </tr>
+
+                <!-- Sección de Gastos -->
+                <tr class="table-danger fw-bold">
+                    <td colspan="3">Gastos</td>
+                </tr>
+                {% for nombre_cuenta, saldos in cuentas_gastos.items %}
+                    {% if saldos.saldo_deudor != 0 or saldos.saldo_acreedor != 0 %}
+                    <tr>
+                        <td class="text-start">{{ nombre_cuenta }}</td>
+                        <td class="text-end">
+                            {% if saldos.saldo_deudor == 0 %}
+                                <span class="text-muted">-</span>
+                            {% else %}
+                                {{ saldos.saldo_deudor|floatformat:2 }}
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if saldos.saldo_acreedor == 0 %}
+                                <span class="text-muted">-</span>
+                            {% else %}
+                                {{ saldos.saldo_acreedor|floatformat:2 }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+                <tr class="table-secondary fw-bold">
+                    <td class="text-start">Gastos Totales</td>
+                    <td class="text-end">{{ total_gastos|floatformat:2 }}</td>
+                    <td></td>
+                </tr>
+                <!-- Utilidad Neta -->
+                <tr class="table-success fw-bold">
+                    <td class="text-start">Utilidad Neta</td>
+                    <td></td>
+                    <td class="text-end">{{ utilidad_neta|floatformat:2 }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-warning text-center mt-4">
+        No hay datos disponibles para el mes y año seleccionados.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Listar Transacciones{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Lista de Transacciones</h1>
+    <table class="table table-hover table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Monto</th>
+                <th>Fecha</th>
+                <th>Cuenta Cargo</th>
+                <th>Cuenta Abono</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in transacciones %}
+            <tr>
+                <td>{{ t.id_transaccion }}</td>
+                <td>{{ t.monto_transaccion }}</td>
+                <td>{{ t.fecha_transaccion }}</td>
+                <td>{{ t.id_cuenta_cargo.nombre_cuenta }}</td>
+                <td>{{ t.id_cuenta_abono.nombre_cuenta }}</td>
+                <td>{{ t.descripcion_transaccion }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">No hay transacciones disponibles.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

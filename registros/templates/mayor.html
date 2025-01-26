@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}Mayor{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="text-center">Ver Mayor</h1>
+    <form method="POST" action="" class="mb-4">
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label for="tipo-cuenta">Selecciona el tipo de cuenta:</label>
+                <select id="tipo-cuenta" name="tipo_cuenta" class="form-control">
+                    <option value="">Seleccione un tipo de cuenta...</option>
+                    {% for c in cuentas %}
+                    <option value="{{ c.id_cuenta }}" {% if c.id_cuenta == cuenta_seleccionada %}selected{% endif %}>{{ c.nombre_cuenta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label for="mes">Selecciona el mes:</label>
+                <select id="mes" name="mes" class="form-control">
+                    <option value="">Seleccione el mes</option>
+                    {% for m in meses %}
+                    <option value="{{ m.0 }}" {% if m.0 == mes_seleccionado %}selected{% endif %}>{{ m.1 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label for="año">Selecciona el año:</label>
+                <select id="año" name="año" class="form-control">
+                    <option value="">Seleccione el año</option>
+                    {% for a in años %}
+                    <option value="{{ a.0 }}" {% if a.0 == año_seleccionado %}selected{% endif %}>{{ a.1 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Aceptar</button>
+    </form>
+
+    {% if transacciones_debe or transacciones_haber %}
+    <h2 class="text-center mt-4">{{ nombre_cuenta }}</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <h3 class="text-center">Debe</h3>
+            <table class="table table-hover table-striped mt-2">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Debe</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transacciones_debe %}
+                    <tr>
+                        <td>{{ t.fecha_transaccion }}</td>
+                        <td class="text-right">{{ t.monto_transaccion|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col-md-6">
+            <h3 class="text-center">Haber</h3>
+            <table class="table table-hover table-striped mt-2">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Haber</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transacciones_haber %}
+                    <tr>
+                        <td>{{ t.fecha_transaccion }}</td>
+                        <td class="text-right">{{ t.monto_transaccion|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Mostrar el saldo deudor fuera de las tablas -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <tr style="background-color: #f5bd56c0;"> 
+                    {% if saldo_deudor == 0 and saldo_acreedor == 0 %}
+                    <td><strong>Saldo</strong></td>
+                    <td class="text-right">0.00</td>
+                    <td><strong>Saldo</strong></td>
+                    <td class="text-right">0.00</td>
+                    {% elif saldo_deudor > saldo_acreedor %}
+                        <td><strong>Saldo Deudor</strong></td>
+                        <td class="text-right">{{ saldo_deudor|floatformat:2 }}</td>
+                        <td></td>
+                        <td></td>
+                    {% elif saldo_acreedor > saldo_deudor %}
+                        <td></td>
+                        <td></td>
+                        <td><strong>Saldo Acreedor</strong></td>
+                        <td class="text-right">{{ saldo_acreedor|floatformat:2 }}</td>
+                    {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning text-center mt-4">
+        No hay transacciones disponibles para la cuenta seleccionada.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

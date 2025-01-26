@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC2 </title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+
+    <!-- Contenido principal -->
+    <div class="container-fluid mt-4 px-5">
+        <h1 class="text-center text-dark">Ciclo contable - PC2</h1>
+
+        <div class="row mt-5">
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Cuentas</h5>
+                        <p class="card-text">Crea nuevas cuentas o consulta la lista de cuentas existentes.</p>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'registros:crear_cuenta' %}" class="btn btn-outline-primary">Crear Cuenta</a>
+                            <a href="{% url 'registros:listar_cuentas' %}" class="btn btn-outline-primary">Listar Cuentas</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Transacciones</h5>
+                        <p class="card-text">Registra una nueva transacción o consulta las transacciones existentes.</p>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'registros:ingresar_transaccion' %}" class="btn btn-outline-primary">Ingresar Transacción</a>
+                            <a href="{% url 'registros:listar_transacciones' %}" class="btn btn-outline-primary">Listar Transacciones</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Reportes Contables</h5>
+                        <p class="card-text">Visualiza los reportes financieros como el diario, mayor, y otros informes.</p>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'registros:ver_diario' %}" class="btn btn-outline-primary">Ver Diario</a>
+                            <a href="{% url 'registros:ver_mayor' %}" class="btn btn-outline-primary">Ver Mayor</a>
+                            <a href="{% url 'registros:balanza_comprobacion' %}" class="btn btn-outline-primary">Balanza de Comprobación</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-4">
+                <div class="card h-100 shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Estados Financieros</h5>
+                        <p class="card-text">Consulta los diferentes estados financieros de la empresa.</p>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'registros:estado_resultados' %}" class="btn btn-outline-primary">Estado de Resultados</a>
+                            <a href="{% url 'registros:estado_balance_general' %}" class="btn btn-outline-primary">Balance General</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

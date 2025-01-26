@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Listar Cuentas{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Lista de Cuentas</h1>
+    
+    {% if error %}
+    <div class="alert alert-danger">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Categoría</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cuenta in cuentas %}
+                <tr>
+                    <td>{{ cuenta.id_cuenta }}</td>
+                    <td>{{ cuenta.nombre_cuenta }}</td>
+                    <td>{{ cuenta.id_categoria.nombre_categoria }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{% url 'registros:editar_cuenta' id_cuenta=cuenta.id_cuenta %}" 
+                               class="btn btn-warning btn-sm">Editar</a>
+                            <a href="{% url 'registros:eliminar_cuenta' id_cuenta=cuenta.id_cuenta %}" 
+                               class="btn btn-danger btn-sm ms-2">Eliminar</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center">No hay cuentas registradas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <a href="{% url 'registros:crear_cuenta' %}" class="btn btn-primary mt-3">Crear Nueva Cuenta</a>
+</div>
+{% endblock %}
+
