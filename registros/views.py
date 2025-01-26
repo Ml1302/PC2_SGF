@@ -110,88 +110,79 @@ def ver_diario(request):
 
 def ver_mayor(request):
     cuentas = Cuenta.objects.all()
-    transacciones = Transaccion.objects.all()  # Aquí obtienes todas las transacciones
-
-    meses_set = set()
-    años_set = set()
-
-    # Agrupar meses y años manualmente
-    for transaccion in transacciones:
-        meses_set.add(transaccion.fecha_transaccion.month)
-        años_set.add(transaccion.fecha_transaccion.year)
-
+    transacciones = DetalleTransaccion.objects.all()
+    
+    # Define todos los meses
     nombres_meses = [
-        '', 'Enero', 'Febrero', 'Marzo', 'Abril', 
-        'Mayo', 'Junio', 'Julio', 'Agosto', 
-        'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        (1, 'Enero'), (2, 'Febrero'), (3, 'Marzo'), (4, 'Abril'),
+        (5, 'Mayo'), (6, 'Junio'), (7, 'Julio'), (8, 'Agosto'),
+        (9, 'Septiembre'), (10, 'Octubre'), (11, 'Noviembre'), (12, 'Diciembre')
     ]
 
-    meses_unicos = [(mes, nombres_meses[mes]) for mes in sorted(meses_set)]
+    # Ya no necesitamos filtrar los meses, usamos la lista completa
+    meses_unicos = nombres_meses
+    
+    años_set = set()
+
+    # Agrupar meses y años
+    for detalle in transacciones:
+        años_set.add(detalle.transaccion.fecha_transaccion.year)
+
     años_unicos = [(año, año) for año in sorted(años_set)]
 
-    # Inicializar listas para las transacciones
     transacciones_debe = []
     transacciones_haber = []
     saldo_deudor = 0
     saldo_acreedor = 0
-    tipo_cuenta_id = None  # Inicializar tipo_cuenta_id
+    nombre_cuenta = ""
 
-    # Procesar la solicitud POST
     if request.method == 'POST':
-        tipo_cuenta_id = request.POST.get('tipo_cuenta')
+        tipo_cuenta = request.POST.get('tipo_cuenta')
         mes = request.POST.get('mes')
         año = request.POST.get('año')
 
-        # Filtrar transacciones donde el id de cuenta está en id_cuenta_cargo
-        if tipo_cuenta_id:
-            transacciones_debe = transacciones.filter(
-                id_cuenta_cargo_id=tipo_cuenta_id
-            )
+        if tipo_cuenta and mes and año:
+            # Filtrar las transacciones por cuenta, mes y año
+            transacciones_debe = DetalleTransaccion.objects.filter(
+                cuenta_id=tipo_cuenta,
+                es_debe=True,
+                transaccion__fecha_transaccion__month=mes,
+                transaccion__fecha_transaccion__year=año
+            ).select_related('transaccion')
 
-            # Filtrar transacciones donde el id de cuenta está en id_cuenta_abono
-            transacciones_haber = transacciones.filter(
-                id_cuenta_abono_id=tipo_cuenta_id
-            )
+            transacciones_haber = DetalleTransaccion.objects.filter(
+                cuenta_id=tipo_cuenta,
+                es_debe=False,
+                transaccion__fecha_transaccion__month=mes,
+                transaccion__fecha_transaccion__year=año
+            ).select_related('transaccion')
 
-            # Filtrar por mes y año, si se proporcionan
-            if mes and año:
-                transacciones_debe = transacciones_debe.filter(
-                    fecha_transaccion__month=mes,
-                    fecha_transaccion__year=año
-                )
-                transacciones_haber = transacciones_haber.filter(
-                    fecha_transaccion__month=mes,
-                    fecha_transaccion__year=año
-                )
+            # Calcular totales
+            total_debe = sum(t.monto for t in transacciones_debe)
+            total_haber = sum(t.monto for t in transacciones_haber)
 
-            # Calcular los montos totales
-            total_debe = sum(t.monto_transaccion for t in transacciones_debe)
-            total_haber = sum(t.monto_transaccion for t in transacciones_haber)
-
-            # Calcular saldo_deudor y saldo_acreedor
+            # Calcular saldos
             if total_debe > total_haber:
                 saldo_deudor = total_debe - total_haber
-            elif total_haber > total_debe:
-                saldo_acreedor = total_haber - total_debe
             else:
-                saldo_deudor = 0
-                saldo_acreedor = 0
+                saldo_acreedor = total_haber - total_debe
 
-    # Aquí corregimos el acceso a la cuenta
-    if tipo_cuenta_id:  # Ahora esto se ejecutará sin problema
-        nombre_cuenta = Cuenta.objects.get(id_cuenta=tipo_cuenta_id).nombre_cuenta
-    else:
-        nombre_cuenta = ""  # Manejar caso en que no hay id
+            # Obtener el nombre de la cuenta
+            if tipo_cuenta:
+                cuenta = Cuenta.objects.get(id_cuenta=tipo_cuenta)
+                nombre_cuenta = cuenta.nombre_cuenta
 
     return render(request, 'mayor.html', {
         'cuentas': cuentas,
-        'transacciones_debe': transacciones_debe,  # Lista de transacciones donde la cuenta es debe
-        'transacciones_haber': transacciones_haber,  # Lista de transacciones donde la cuenta es haber
+        'transacciones_debe': transacciones_debe,
+        'transacciones_haber': transacciones_haber,
         'meses': meses_unicos,
         'años': años_unicos,
         'nombre_cuenta': nombre_cuenta,
-        'saldo_deudor': saldo_deudor,  # Pasar saldo_deudor a la plantilla
-        'saldo_acreedor': saldo_acreedor,  # Pasar saldo_acreedor a la plantilla
+        'saldo_deudor': saldo_deudor,
+        'saldo_acreedor': saldo_acreedor,
+        'total_debe': sum(t.monto for t in transacciones_debe),
+        'total_haber': sum(t.monto for t in transacciones_haber),
     })
 
 def balanza_comprobacion(request):
