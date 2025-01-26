@@ -79,6 +79,14 @@ def ingresar_transaccion(request):
 
 def listar_transacciones(request):
     transacciones = Transaccion.objects.prefetch_related('detalles', 'detalles__cuenta').all()
+    if request.method == 'POST':
+        mes = request.POST.get('mes')
+        anio = request.POST.get('anio')
+        if mes and anio:
+            transacciones = transacciones.filter(
+                fecha_transaccion__month=mes,
+                fecha_transaccion__year=anio
+            )
     return render(request, 'listar_transacciones.html', {'transacciones': transacciones})
 
 def home(request):

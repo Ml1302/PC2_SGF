@@ -9,6 +9,39 @@
             <h2 class="card-title mb-0">Lista de Transacciones</h2>
         </div>
         <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label for="mes" class="form-label">Mes</label>
+                        <select name="mes" id="mes" class="form-select">
+                            <option value="">Seleccionar mes</option>
+                            <option value="1">Enero</option>
+                            <option value="2">Febrero</option>
+                            <option value="3">Marzo</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Mayo</option>
+                            <option value="6">Junio</option>
+                            <option value="7">Julio</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="anio" class="form-label">Año</label>
+                        <input type="number" name="anio" id="anio" class="form-control" placeholder="YYYY">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="material-icons align-middle me-1">search</i>
+                            Filtrar
+                        </button>
+                    </div>
+                </div>
+            </form>
             {% for t in transacciones %}
             <div class="transaction-card mb-4">
                 <div class="card">
