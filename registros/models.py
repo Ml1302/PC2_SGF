@@ -16,7 +16,7 @@ class Categoria_ecuacion_contable(models.Model):
         return self.nombre_categoria
 
 class Cuenta(models.Model):
-    id_cuenta = models.AutoField(primary_key=True)
+    id_cuenta = models.IntegerField(primary_key=True)  # Cambiado de AutoField a IntegerField
     nombre_cuenta = models.CharField(max_length=100)
     id_categoria = models.ForeignKey(Categoria_ecuacion_contable, on_delete=models.CASCADE)
     activo = models.BooleanField(default=True)

@@ -4,10 +4,17 @@ from .models import Cuenta, Transaccion, DetalleTransaccion
 class CuentaForm(forms.ModelForm):
     class Meta:
         model = Cuenta
-        fields = ['nombre_cuenta', 'id_categoria']
+        fields = ['id_cuenta', 'nombre_cuenta', 'id_categoria']
         labels = {
+            'id_cuenta': 'Código de cuenta',
             'nombre_cuenta': 'Nombre de la cuenta',
             'id_categoria': 'Categoría'
+        }
+        widgets = {
+            'id_cuenta': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingrese el código de la cuenta'
+            })
         }
 
 class DetalleTransaccionForm(forms.ModelForm):

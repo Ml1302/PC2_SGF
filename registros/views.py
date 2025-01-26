@@ -1,7 +1,7 @@
 from datetime import datetime
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django.db.models import Max
+from django.db.models import Max, Q
 from .models import Cuenta, Transaccion, Categoria_ecuacion_contable
 from .forms import CuentaForm, TransaccionForm
 
@@ -17,11 +17,23 @@ def crear_cuenta(request):
 
     return render(request, 'crear_cuenta.html', {'form': form})
 
+def custom_sort_key(cuenta):
+    """
+    Función auxiliar para ordenar cuentas por dígitos
+    Convierte el ID en una lista de dígitos para comparación
+    """
+    return [int(d) for d in str(cuenta.id_cuenta)]
+
 # Vista para listar las cuentas
 def listar_cuentas(request):
     try:
-        cuentas = Cuenta.objects.filter(activo=True).select_related('id_categoria').order_by('id_cuenta')  # Filtrar solo cuentas activas
-        return render(request, 'listar_cuentas.html', {'cuentas': cuentas})
+        # Obtener todas las cuentas activas
+        cuentas = Cuenta.objects.filter(activo=True).select_related('id_categoria')
+        
+        # Convertir QuerySet a lista y ordenar usando sorted con key personalizada
+        cuentas_ordenadas = sorted(cuentas, key=custom_sort_key)
+        
+        return render(request, 'listar_cuentas.html', {'cuentas': cuentas_ordenadas})
     except Exception as e:
         print(f"Error en listar_cuentas: {e}")  # Para debugging
         return render(request, 'listar_cuentas.html', {'error': str(e)})
