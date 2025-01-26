@@ -1,5 +1,13 @@
 from django.db import models
 
+CATEGORIAS = [
+    ('ACTIVO', 'Activo'),
+    ('PASIVO', 'Pasivo'),
+    ('PATRIMONIO', 'Patrimonio'),  # Cambiado de 'CAPITAL CONTABLE DEL PROPIETARIO'
+    ('INGRESOS', 'Ingresos'),
+    ('COSTOS_GASTOS', 'Costos/Gastos'),  # Cambiado de 'GASTOS'
+]
+
 class Categoria_ecuacion_contable(models.Model):
     id_categoria = models.AutoField(primary_key=True)  # AutoField para un ID autoincremental
     nombre_categoria = models.CharField(max_length=100)

@@ -3,48 +3,68 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1 class="mb-4">Lista de Cuentas</h1>
-    
-    {% if error %}
-    <div class="alert alert-danger">
-        {{ error }}
-    </div>
-    {% endif %}
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex align-items-center">
+            <i class="material-icons me-2">account_balance_wallet</i>
+            <h2 class="card-title mb-0">Lista de Cuentas</h2>
+        </div>
+        <div class="card-body">
+            {% if error %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="material-icons align-middle me-2">error</i>
+                {{ error }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endif %}
 
-    <div class="table-responsive">
-        <table class="table table-hover">
-            <thead class="table">
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>Categoría</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cuenta in cuentas %}
-                <tr>
-                    <td>{{ cuenta.id_cuenta }}</td>
-                    <td>{{ cuenta.nombre_cuenta }}</td>
-                    <td>{{ cuenta.id_categoria.nombre_categoria }}</td>
-                    <td>
-                        <div class="btn-group">
-                            <a href="{% url 'registros:editar_cuenta' id_cuenta=cuenta.id_cuenta %}" 
-                               class="btn btn-warning btn-sm">Editar</a>
-                            <a href="{% url 'registros:eliminar_cuenta' id_cuenta=cuenta.id_cuenta %}" 
-                               class="btn btn-danger btn-sm ms-2">Eliminar</a>
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center">No hay cuentas registradas.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead style="background-color: #f8f9fa;">
+                        <tr>
+                            <th class="text-center" style="width: 10%">ID</th>
+                            <th style="width: 40%">Nombre</th>
+                            <th style="width: 30%">Categoría</th>
+                            <th class="text-center" style="width: 20%">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cuenta in cuentas %}
+                        <tr>
+                            <td class="text-center">{{ cuenta.id_cuenta }}</td>
+                            <td>{{ cuenta.nombre_cuenta }}</td>
+                            <td>{{ cuenta.id_categoria.nombre_categoria }}</td>
+                            <td class="text-center">
+                                <div class="btn-group">
+                                    <a href="{% url 'registros:editar_cuenta' id_cuenta=cuenta.id_cuenta %}" 
+                                       class="btn btn-warning btn-sm">
+                                       <i class="material-icons">edit</i>
+                                    </a>
+                                    <a href="{% url 'registros:eliminar_cuenta' id_cuenta=cuenta.id_cuenta %}" 
+                                       class="btn btn-danger btn-sm ms-2">
+                                       <i class="material-icons">delete</i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4">
+                                <i class="material-icons text-muted" style="font-size: 3rem;">inbox</i>
+                                <p class="text-muted mt-2">No hay cuentas registradas.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'registros:crear_cuenta' %}" class="btn btn-primary">
+                <i class="material-icons align-middle me-2">add_circle</i>
+                Crear Nueva Cuenta
+            </a>
+        </div>
     </div>
-    <a href="{% url 'registros:crear_cuenta' %}" class="btn btn-primary mt-3">Crear Nueva Cuenta</a>
 </div>
 {% endblock %}
 

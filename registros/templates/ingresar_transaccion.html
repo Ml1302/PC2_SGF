@@ -3,13 +3,33 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1 class="text-center">Ingresar Transacción</h1>
-    <form method="post" action="{% url 'ingresar_transaccion' %}">
-        {% csrf_token %}
-        <div class="form-group mb-3">
-            {{ form.as_p }}
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex align-items-center">
+            <i class="material-icons me-2">add_circle</i>
+            <h2 class="card-title mb-0">Ingresar Transacción</h2>
         </div>
-        <button type="submit" class="btn btn-primary">Ingresar Transacción</button>
-    </form>
+        <div class="card-body">
+            <form method="post" action="{% url 'registros:ingresar_transaccion' %}">
+                {% csrf_token %}
+                <div class="mb-4">
+                    {{ form.as_p }}
+                </div>
+                <div class="row mt-4">
+                    <div class="col-6">
+                        <a href="{% url 'registros:listar_transacciones' %}" class="btn btn-outline-secondary w-100">
+                            <i class="material-icons align-middle me-2">arrow_back</i>
+                            Cancelar
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="material-icons align-middle me-2">save</i>
+                            Ingresar Transacción
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}
