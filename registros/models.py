@@ -3,35 +3,47 @@ from django.db import models
 CATEGORIAS = [
     ('ACTIVO', 'Activo'),
     ('PASIVO', 'Pasivo'),
-    ('PATRIMONIO', 'Patrimonio'),  # Cambiado de 'CAPITAL CONTABLE DEL PROPIETARIO'
+    ('PATRIMONIO', 'Patrimonio'),
     ('INGRESOS', 'Ingresos'),
-    ('COSTOS_GASTOS', 'Costos/Gastos'),  # Cambiado de 'GASTOS'
+    ('COSTOS_GASTOS', 'Costos/Gastos'),
 ]
 
 class Categoria_ecuacion_contable(models.Model):
-    id_categoria = models.AutoField(primary_key=True)  # AutoField para un ID autoincremental
+    id_categoria = models.AutoField(primary_key=True)
     nombre_categoria = models.CharField(max_length=100)
 
     def __str__(self):
-        return self.nombre_categoria  # Representación legible de la categoría
+        return self.nombre_categoria
 
 class Cuenta(models.Model):
-    id_cuenta = models.IntegerField(primary_key=True)
+    id_cuenta = models.AutoField(primary_key=True)
     nombre_cuenta = models.CharField(max_length=100)
     id_categoria = models.ForeignKey(Categoria_ecuacion_contable, on_delete=models.CASCADE)
-    activo = models.BooleanField(default=True)  # Nuevo campo para marcar si la cuenta está activa
+    activo = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.nombre_cuenta  # Representación legible de la cuenta
+        return self.nombre_cuenta
 
 class Transaccion(models.Model):
-    id_transaccion = models.AutoField(primary_key=True)  # AutoField para un ID autoincremental
-    monto_transaccion = models.DecimalField(max_digits=10, decimal_places=2)
+    id_transaccion = models.AutoField(primary_key=True)
     fecha_transaccion = models.DateField()
-    id_cuenta_cargo = models.ForeignKey(Cuenta, related_name='debe', on_delete=models.CASCADE)
-    id_cuenta_abono = models.ForeignKey(Cuenta, related_name='haber', on_delete=models.CASCADE)
-    # If 'descripcion_transaccion' is needed, uncomment the following line
-    # descripcion_transaccion = models.TextField(blank=True, null=True)
+    glosa = models.CharField(max_length=200, null=True, blank=True)
+    
+    def __str__(self):
+        return f"Asiento {self.id_transaccion} - {self.fecha_transaccion}"
+
+    def total_debe(self):
+        return sum(detalle.monto for detalle in self.detalles.filter(es_debe=True))
+
+    def total_haber(self):
+        return sum(detalle.monto for detalle in self.detalles.filter(es_debe=False))
+
+class DetalleTransaccion(models.Model):
+    transaccion = models.ForeignKey(Transaccion, related_name='detalles', on_delete=models.CASCADE)
+    cuenta = models.ForeignKey(Cuenta, on_delete=models.CASCADE)
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    es_debe = models.BooleanField()
 
     def __str__(self):
-        return f"Transacción {self.id_transaccion} - {self.monto_transaccion}"
+        tipo = "DEBE" if self.es_debe else "HABER"
+        return f"{self.cuenta.nombre_cuenta} - {tipo}: {self.monto}"

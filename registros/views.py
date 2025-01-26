@@ -27,21 +27,46 @@ def listar_cuentas(request):
         return render(request, 'listar_cuentas.html', {'error': str(e)})
 
 # Vista para crear una transacción
+from django.db import transaction
+from .models import DetalleTransaccion
+from django.contrib import messages
+
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.db import transaction
+import json
+from .models import Transaccion, DetalleTransaccion, Cuenta
+
 def ingresar_transaccion(request):
-    cuentas = Cuenta.objects.all()  # Obtener todas las cuentas
     if request.method == 'POST':
-        form = TransaccionForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('listar_transacciones')
-    else:
-        form = TransaccionForm()
+        try:
+            with transaction.atomic():
+                # Crear la transacción principal
+                nueva_transaccion = Transaccion.objects.create(
+                    fecha_transaccion=request.POST.get('fecha'),
+                    glosa=request.POST.get('glosa')
+                )
 
-    return render(request, 'ingresar_transaccion.html', {'form': form})
+                # Procesar los detalles
+                detalles = json.loads(request.POST.get('detalles', '[]'))
+                for detalle in detalles:
+                    DetalleTransaccion.objects.create(
+                        transaccion=nueva_transaccion,
+                        cuenta_id=detalle['cuenta'],
+                        monto=detalle['monto'],
+                        es_debe=detalle['es_debe']
+                    )
 
-# Vista para listar las transacciones
+                messages.success(request, 'Transacción registrada exitosamente')
+                return redirect('registros:listar_transacciones')
+        except Exception as e:
+            messages.error(request, f'Error al registrar la transacción: {str(e)}')
+    
+    cuentas = Cuenta.objects.filter(activo=True)
+    return render(request, 'ingresar_transaccion.html', {'cuentas': cuentas})
+
 def listar_transacciones(request):
-    transacciones = Transaccion.objects.all()
+    transacciones = Transaccion.objects.prefetch_related('detalles', 'detalles__cuenta').all()
     return render(request, 'listar_transacciones.html', {'transacciones': transacciones})
 
 def home(request):

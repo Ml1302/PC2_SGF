@@ -3,34 +3,95 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1>Lista de Transacciones</h1>
-    <table class="table table-hover table-striped">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Monto</th>
-                <th>Fecha</th>
-                <th>Cuenta Cargo</th>
-                <th>Cuenta Abono</th>
-                <th>Descripción</th>
-            </tr>
-        </thead>
-        <tbody>
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex align-items-center">
+            <i class="material-icons me-2">receipt_long</i>
+            <h2 class="card-title mb-0">Lista de Transacciones</h2>
+        </div>
+        <div class="card-body">
             {% for t in transacciones %}
-            <tr>
-                <td>{{ t.id_transaccion }}</td>
-                <td>{{ t.monto_transaccion }}</td>
-                <td>{{ t.fecha_transaccion }}</td>
-                <td>{{ t.id_cuenta_cargo.nombre_cuenta }}</td>
-                <td>{{ t.id_cuenta_abono.nombre_cuenta }}</td>
-                <td>{{ t.descripcion_transaccion }}</td>
-            </tr>
+            <div class="transaction-card mb-4">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <div class="row align-items-center">
+                            <div class="col-md-2">
+                                <strong class="text-primary">#{{ t.id_transaccion }}</strong>
+                            </div>
+                            <div class="col-md-3">
+                                <i class="material-icons align-middle me-1">calendar_today</i>
+                                {{ t.fecha_transaccion|date:"d/m/Y" }}
+                            </div>
+                            <div class="col-md-7">
+                                <i class="material-icons align-middle me-1">description</i>
+                                {{ t.glosa }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 50%">Cuenta</th>
+                                        <th class="text-end" style="width: 25%">Debe</th>
+                                        <th class="text-end" style="width: 25%">Haber</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for detalle in t.detalles.all %}
+                                    <tr>
+                                        <td>{{ detalle.cuenta.nombre_cuenta }}</td>
+                                        <td class="text-end">
+                                            {% if detalle.es_debe %}
+                                            <span class="text-primary">S/. {{ detalle.monto|floatformat:2 }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            {% if not detalle.es_debe %}
+                                            <span class="text-success">S/. {{ detalle.monto|floatformat:2 }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th>Totales</th>
+                                        <th class="text-end text-primary">S/. {{ t.total_debe|floatformat:2 }}</th>
+                                        <th class="text-end text-success">S/. {{ t.total_haber|floatformat:2 }}</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
             {% empty %}
-            <tr>
-                <td colspan="6">No hay transacciones disponibles.</td>
-            </tr>
+            <div class="text-center py-4">
+                <i class="material-icons text-muted" style="font-size: 4rem;">inbox</i>
+                <p class="text-muted mt-2">No hay transacciones registradas.</p>
+            </div>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+        <div class="card-footer">
+            <a href="{% url 'registros:ingresar_transaccion' %}" class="btn btn-primary">
+                <i class="material-icons align-middle me-2">add_circle</i>
+                Nueva Transacción
+            </a>
+        </div>
+    </div>
 </div>
+
+<style>
+.transaction-card {
+    transition: transform 0.2s;
+}
+.transaction-card:hover {
+    transform: translateY(-2px);
+}
+.table td, .table th {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+}
+</style>
 {% endblock %}

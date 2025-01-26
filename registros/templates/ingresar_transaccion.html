@@ -5,31 +5,252 @@
 <div class="container mt-4">
     <div class="card shadow">
         <div class="card-header bg-primary text-white d-flex align-items-center">
-            <i class="material-icons me-2">add_circle</i>
-            <h2 class="card-title mb-0">Ingresar Transacción</h2>
+            <i class="material-icons me-2">post_add</i>
+            <h2 class="card-title mb-0">Nuevo Asiento Contable</h2>
         </div>
         <div class="card-body">
-            <form method="post" action="{% url 'registros:ingresar_transaccion' %}">
+            <form id="transactionForm" method="POST">
                 {% csrf_token %}
-                <div class="mb-4">
-                    {{ form.as_p }}
+                
+                <!-- Fecha y Glosa -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="fecha">Fecha</label>
+                            <input type="date" class="form-control" id="fecha" name="fecha" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="glosa">Glosa</label>
+                            <input type="text" class="form-control" id="glosa" name="glosa" required>
+                        </div>
+                    </div>
                 </div>
-                <div class="row mt-4">
-                    <div class="col-6">
-                        <a href="{% url 'registros:listar_transacciones' %}" class="btn btn-outline-secondary w-100">
-                            <i class="material-icons align-middle me-2">arrow_back</i>
-                            Cancelar
-                        </a>
-                    </div>
-                    <div class="col-6">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="material-icons align-middle me-2">save</i>
-                            Ingresar Transacción
-                        </button>
-                    </div>
+
+                <!-- Tabla de asientos -->
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="asientosTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 40%">Cuenta</th>
+                                <th style="width: 25%">Debe</th>
+                                <th style="width: 25%">Haber</th>
+                                <th style="width: 10%">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="asientosBody">
+                            <tr>
+                                <td>
+                                    <select class="form-select cuenta-select" required>
+                                        <option value="">Seleccione una cuenta</option>
+                                        {% for cuenta in cuentas %}
+                                        <option value="{{ cuenta.id_cuenta }}">{{ cuenta.nombre_cuenta }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control debe-input" step="0.01" min="0">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control haber-input" step="0.01" min="0">
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm delete-row">
+                                        <i class="material-icons">delete</i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td><strong>Totales</strong></td>
+                                <td id="totalDebe">0.00</td>
+                                <td id="totalHaber">0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="mb-3">
+                    <button type="button" class="btn btn-success" id="addRow">
+                        <i class="material-icons align-middle me-2">add</i>
+                        Agregar línea
+                    </button>
+                </div>
+
+                <div class="alert alert-info" id="balanceStatus">
+                    Los totales del debe y haber deben ser iguales
+                </div>
+
+                <div class="card-footer bg-white border-0 px-0">
+                    <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                        <i class="material-icons align-middle me-2">save</i>
+                        Guardar Asiento
+                    </button>
+                    <a href="{% url 'registros:listar_transacciones' %}" class="btn btn-outline-secondary">
+                        <i class="material-icons align-middle me-2">arrow_back</i>
+                        Cancelar
+                    </a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Template para una nueva fila -->
+<template id="row-template">
+    <tr>
+        <td>
+            <select class="form-select cuenta-select" name="cuenta" required>
+                <option value="">Seleccione una cuenta</option>
+                {% for cuenta in cuentas %}
+                <option value="{{ cuenta.id_cuenta }}">{{ cuenta.nombre_cuenta }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <input type="number" class="form-control debe-input" name="debe" step="0.01" min="0">
+        </td>
+        <td>
+            <input type="number" class="form-control haber-input" name="haber" step="0.01" min="0">
+        </td>
+        <td>
+            <button type="button" class="btn btn-danger btn-sm delete-row">
+                <i class="material-icons">delete</i>
+            </button>
+        </td>
+    </tr>
+</template>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const asientosBody = document.getElementById('asientosBody');
+    const addRowBtn = document.getElementById('addRow');
+    const form = document.getElementById('transactionForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const balanceStatus = document.getElementById('balanceStatus');
+    const rowTemplate = document.getElementById('row-template');
+
+    // Función para crear una nueva fila usando el template
+    function createNewRow() {
+        const template = rowTemplate.content.cloneNode(true);
+        const newRow = template.querySelector('tr');
+        // Limpiar los valores de los inputs
+        newRow.querySelector('.cuenta-select').value = '';
+        newRow.querySelector('.debe-input').value = '';
+        newRow.querySelector('.haber-input').value = '';
+        return newRow;
+    }
+
+    // Función para agregar listeners a los inputs de una fila
+    function addInputListeners(row) {
+        const debeInput = row.querySelector('.debe-input');
+        const haberInput = row.querySelector('.haber-input');
+
+        debeInput.addEventListener('input', function() {
+            if (this.value !== '') haberInput.value = '';
+            calcularTotales();
+        });
+
+        haberInput.addEventListener('input', function() {
+            if (this.value !== '') debeInput.value = '';
+            calcularTotales();
+        });
+
+        // Listener para el botón de eliminar fila
+        const deleteBtn = row.querySelector('.delete-row');
+        deleteBtn.addEventListener('click', function() {
+            if (asientosBody.children.length > 1) {
+                row.remove();
+                calcularTotales();
+            }
+        });
+    }
+
+    // Manejar clic en el botón de agregar fila
+    addRowBtn.addEventListener('click', function() {
+        const newRow = createNewRow();
+        asientosBody.appendChild(newRow);
+        addInputListeners(newRow);
+    });
+
+    // Calcular totales y verificar balance
+    function calcularTotales() {
+        let totalDebe = 0;
+        let totalHaber = 0;
+
+        asientosBody.querySelectorAll('.debe-input').forEach(input => {
+            totalDebe += parseFloat(input.value) || 0;
+        });
+
+        asientosBody.querySelectorAll('.haber-input').forEach(input => {
+            totalHaber += parseFloat(input.value) || 0;
+        });
+
+        document.getElementById('totalDebe').textContent = totalDebe.toFixed(2);
+        document.getElementById('totalHaber').textContent = totalHaber.toFixed(2);
+
+        const balanced = Math.abs(totalDebe - totalHaber) < 0.01;
+        submitBtn.disabled = !balanced;
+        
+        balanceStatus.className = balanced ? 'alert alert-success' : 'alert alert-warning';
+        balanceStatus.textContent = balanced ? 
+            'Los totales están balanceados' : 
+            'Los totales del debe y haber deben ser iguales';
+    }
+
+    // Manejar envío del formulario
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const detalles = [];
+        asientosBody.querySelectorAll('tr').forEach(row => {
+            const cuenta = row.querySelector('.cuenta-select').value;
+            const debe = parseFloat(row.querySelector('.debe-input').value) || 0;
+            const haber = parseFloat(row.querySelector('.haber-input').value) || 0;
+            
+            if (cuenta && (debe || haber)) {
+                detalles.push({
+                    cuenta: cuenta,
+                    monto: debe || haber,
+                    es_debe: debe > 0
+                });
+            }
+        });
+
+        // Preparar los datos para enviar
+        const formData = new FormData();
+        formData.append('fecha', document.getElementById('fecha').value);
+        formData.append('glosa', document.getElementById('glosa').value);
+        formData.append('detalles', JSON.stringify(detalles));
+
+        // Enviar datos al servidor
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.href = '{% url "registros:listar_transacciones" %}';
+            } else {
+                throw new Error('Error al guardar la transacción');
+            }
+        })
+        .catch(error => {
+            alert(error.message);
+        });
+    });
+
+    // Añadir listeners a las filas existentes
+    asientosBody.querySelectorAll('tr').forEach(row => addInputListeners(row));
+});
+</script>
 {% endblock %}
