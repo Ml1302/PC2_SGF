@@ -13,29 +13,37 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='CategoriaEcuacionContable',
+            name='Categoria_ecuacion_contable',
             fields=[
                 ('id_categoria', models.AutoField(primary_key=True, serialize=False)),
-                ('nombre_categoria', models.CharField(max_length=256)),
+                ('nombre_categoria', models.CharField(max_length=100)),
             ],
         ),
         migrations.CreateModel(
             name='Cuenta',
             fields=[
                 ('id_cuenta', models.IntegerField(primary_key=True, serialize=False)),
-                ('nombre_cuenta', models.CharField(max_length=256)),
-                ('id_categoria', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='registros.categoriaecuacioncontable')),
+                ('nombre_cuenta', models.CharField(max_length=100)),
+                ('activo', models.BooleanField(default=True)),
+                ('id_categoria', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='registros.categoria_ecuacion_contable')),
             ],
         ),
         migrations.CreateModel(
             name='Transaccion',
             fields=[
                 ('id_transaccion', models.AutoField(primary_key=True, serialize=False)),
-                ('monto_transaccion', models.DecimalField(decimal_places=2, max_digits=15)),
                 ('fecha_transaccion', models.DateField()),
-                ('descripcion_transaccion', models.CharField(max_length=256)),
-                ('id_cuenta_abono', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='cuentas_abono', to='registros.cuenta')),
-                ('id_cuenta_cargo', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='cuentas_cargo', to='registros.cuenta')),
+                ('glosa', models.CharField(blank=True, max_length=200, null=True)),
+            ],
+        ),
+        migrations.CreateModel(
+            name='DetalleTransaccion',
+            fields=[
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('monto', models.DecimalField(decimal_places=2, max_digits=10)),
+                ('es_debe', models.BooleanField()),
+                ('cuenta', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='registros.cuenta')),
+                ('transaccion', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='detalles', to='registros.transaccion')),
             ],
         ),
     ]
