@@ -283,24 +283,32 @@ def estado_resultados(request):
 
         # Calcular saldos para todas las cuentas
         for cuenta in cuentas:
-            # Filtrar transacciones para la cuenta actual
-            transacciones_debe = transacciones.filter(id_cuenta_cargo_id=cuenta.id_cuenta)
-            transacciones_haber = transacciones.filter(id_cuenta_abono_id=cuenta.id_cuenta)
+            # Use detalleTransaccion queries instead of transacciones.filter(id_cuenta_cargo_id=...)
+            transacciones_debe = DetalleTransaccion.objects.filter(
+                transaccion__in=transacciones,
+                es_debe=True,
+                cuenta=cuenta
+            )
+            transacciones_haber = DetalleTransaccion.objects.filter(
+                transaccion__in=transacciones,
+                es_debe=False,
+                cuenta=cuenta
+            )
 
             # Filtrar por mes y año, si se proporcionan
             if mes and año:
                 transacciones_debe = transacciones_debe.filter(
-                    fecha_transaccion__month=mes,
-                    fecha_transaccion__year=año
+                    transaccion__fecha_transaccion__month=mes,
+                    transaccion__fecha_transaccion__year=año
                 )
                 transacciones_haber = transacciones_haber.filter(
-                    fecha_transaccion__month=mes,
-                    fecha_transaccion__year=año
+                    transaccion__fecha_transaccion__month=mes,
+                    transaccion__fecha_transaccion__year=año
                 )
 
             # Calcular los montos totales
-            total_debe_cuenta = sum(t.monto_transaccion for t in transacciones_debe)
-            total_haber_cuenta = sum(t.monto_transaccion for t in transacciones_haber)
+            total_debe_cuenta = sum(t.monto for t in transacciones_debe)
+            total_haber_cuenta = sum(t.monto for t in transacciones_haber)
 
             # Calcular saldo_deudor y saldo_acreedor
             saldo_deudor = total_debe_cuenta - total_haber_cuenta if total_debe_cuenta > total_haber_cuenta else 0
