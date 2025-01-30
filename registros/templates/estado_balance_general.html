@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Estado de Situación Financiera</h2>
+<form method="POST">
+    {% csrf_token %}
+    <label for="mes">Mes:</label>
+    <select name="mes">
+        {% for mes in meses %}
+        <option value="{{ mes.0 }}">{{ mes.1 }}</option>
+        {% endfor %}
+    </select>
+    <label for="año">Año:</label>
+    <select name="año">
+        {% for año in años %}
+        <option value="{{ año.0 }}">{{ año.1 }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Filtrar</button>
+</form>
+
+<h3>Activos</h3>
+<table border="1">
+    <tr>
+        <th>Cuenta</th>
+        <th>Saldo</th>
+    </tr>
+    {% for cuenta, saldo in cuentas_activos.items %}
+    <tr>
+        <td>{{ cuenta }}</td>
+        <td>{{ saldo }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>Pasivos</h3>
+<table border="1">
+    <tr>
+        <th>Cuenta</th>
+        <th>Saldo</th>
+    </tr>
+    {% for cuenta, saldo in cuentas_pasivos.items %}
+    <tr>
+        <td>{{ cuenta }}</td>
+        <td>{{ saldo }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>Patrimonio</h3>
+<table border="1">
+    <tr>
+        <th>Cuenta</th>
+        <th>Saldo</th>
+    </tr>
+    {% for cuenta, saldo in cuentas_capital.items %}
+    <tr>
+        <td>{{ cuenta }}</td>
+        <td>{{ saldo }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>Resumen</h3>
+<p><strong>Total Activos:</strong> {{ total_activos }}</p>
+<p><strong>Total Pasivos:</strong> {{ total_pasivos }}</p>
+<p><strong>Total Patrimonio:</strong> {{ total_capital }}</p>
+{% endblock %}

@@ -13,9 +13,9 @@
                 <span class="badge bg-light text-dark">
                     <i class="material-icons align-middle me-1" style="font-size: 1rem;">calendar_today</i>
                     {% if mes_seleccionado and año_seleccionado %}
-                        {{ mes_seleccionado }} {{ año_seleccionado }}
+                    {{ mes_seleccionado }} {{ año_seleccionado }}
                     {% else %}
-                        Seleccione período
+                    Seleccione período
                     {% endif %}
                 </span>
             </div>
@@ -159,6 +159,13 @@
     </div>
 </div>
 {% endblock %}
+<div class="mt-4">
+    <h4>Información de Depuración</h4>
+    <pre>
+        {{ debug_info|safe }}
+    </pre>
+</div>
+
 
 {% block styles %}
 <style>
@@ -166,22 +173,29 @@
         box-shadow: var(--card-shadow);
         margin-bottom: 0;
     }
-    .table td, .table th {
+
+    .table td,
+    .table th {
         padding: 1rem;
         vertical-align: middle;
     }
+
     .table-info {
         background-color: rgba(0, 123, 255, 0.1) !important;
     }
+
     .table-success {
         background-color: rgba(40, 167, 69, 0.1) !important;
     }
+
     .badge {
         font-size: 0.9rem;
     }
+
     .form-label {
         font-weight: 500;
     }
+
     .card {
         border: none;
     }

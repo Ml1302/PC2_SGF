@@ -1,9 +1,11 @@
 from datetime import datetime
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django.db.models import Max, Q
+from django.db.models import Max, Q,Sum
 from .models import Cuenta, Transaccion, Categoria_ecuacion_contable
 from .forms import CuentaForm, TransaccionForm
+from .models import Cuenta, Transaccion, DetalleTransaccion
+from decimal import Decimal
 
 # Vista para crear una cuenta
 def crear_cuenta(request):
@@ -247,101 +249,321 @@ def balanza_comprobacion(request):
         'total_haber': total_haber,  # Pasar el total_haber a la plantilla
     })
 
+# Función auxiliar para obtener los meses y años disponibles
+def obtener_meses_y_años():
+    transacciones = Transaccion.objects.all()
+    meses_set = sorted(set(t.fecha_transaccion.month for t in transacciones))
+    años_set = sorted(set(t.fecha_transaccion.year for t in transacciones))
+    
+    nombres_meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+    meses_unicos = [(mes, nombres_meses[mes]) for mes in meses_set]
+    años_unicos = [(año, año) for año in años_set]
+    
+    return meses_unicos, años_unicos
+
+# Estado de Resultados con Depuración Extrema
 def estado_resultados(request):
-    cuentas = Cuenta.objects.all()  # Obtener todas las cuentas
-    transacciones = Transaccion.objects.all()  # Obtener todas las transacciones
+    cuentas = Cuenta.objects.all()
+    meses_unicos, años_unicos = obtener_meses_y_años()
 
-    meses_set = set()
-    años_set = set()
+    # Inicialización de datos
+    ventas_netas = Decimal(0)
+    costo_ventas = Decimal(0)
+    utilidad_bruta = Decimal(0)
+    gastos_administrativos = Decimal(0)
+    gastos_venta = Decimal(0)
+    utilidad_operativa = Decimal(0)
+    gastos_financieros = Decimal(0)
+    otros_gastos = Decimal(0)
+    otros_ingresos = Decimal(0)
+    utilidad_antes_impuestos = Decimal(0)
+    impuestos = Decimal(0)
+    utilidad_neta = Decimal(0)
 
-    # Agrupar meses y años manualmente
-    for transaccion in transacciones:
-        meses_set.add(transaccion.fecha_transaccion.month)
-        años_set.add(transaccion.fecha_transaccion.year)
+    # Depuración
+    debug_info = []
+    debug_info.append("🟢 Iniciando procesamiento de Estado de Resultados.")
 
-    nombres_meses = [
-        '', 'enero', 'febrero', 'marzo', 'abril', 
-        'mayo', 'junio', 'julio', 'agosto', 
-        'septiembre', 'octubre', 'noviembre', 'diciembre'
-    ]
+    if request.method == 'POST':
+        debug_info.append("✅ Se recibió una solicitud POST.")
 
-    meses_unicos = [(mes, nombres_meses[mes]) for mes in sorted(meses_set)]
-    años_unicos = [(año, año) for año in sorted(años_set)]
+        # Obtener datos del formulario
+        mes = request.POST.get('mes', None)
+        año = request.POST.get('anio', None)
 
-    # Inicializar los diccionarios para los saldos de cada cuenta
-    cuentas_ingresos = {}
-    cuentas_gastos = {}
+        # Depuración de valores recibidos
+        debug_info.append(f"📝 Valores recibidos: mes={mes}, año={año}")
 
-    # Inicializar los totales
-    total_ingresos = 0
-    total_gastos = 0
+        try:
+            mes = int(mes) if mes else None
+            año = int(año) if año else None
+        except ValueError:
+            mes = None
+            año = None
+            debug_info.append("❌ Error al convertir mes o año a entero.")
 
-    # Procesar la solicitud POST
+        # Validación de filtros
+        if mes is None or año is None:
+            debug_info.append("⚠️ Mes o año es None.")
+        elif not (1 <= mes <= 12) or not (1900 <= año <= datetime.now().year):
+            debug_info.append(f"🚨 Mes o año fuera de rango: mes={mes}, año={año}")
+
+        if mes is None or año is None or not (1 <= mes <= 12) or not (1900 <= año <= datetime.now().year):
+            return render(request, 'estado_resultados.html', {
+                'meses': meses_unicos,
+                'años': años_unicos,
+                'error': 'Por favor, seleccione un mes y año válidos.',
+                'debug_info': debug_info
+            })
+
+        debug_info.append(f"🔍 Filtrando transacciones para mes={mes}, año={año}.")
+        transacciones_filtradas = Transaccion.objects.filter(
+            fecha_transaccion__month=mes,
+            fecha_transaccion__year=año
+        )
+
+        debug_info.append(f"📊 Transacciones filtradas encontradas: {transacciones_filtradas.count()}")
+        if transacciones_filtradas.count() == 0:
+            debug_info.append("⛔ No se encontraron transacciones para el período seleccionado.")
+            return render(request, 'estado_resultados.html', {
+                'meses': meses_unicos,
+                'años': años_unicos,
+                'error': 'No se encontraron transacciones para el período seleccionado.',
+                'debug_info': debug_info
+            })
+
+        detalles_filtrados = DetalleTransaccion.objects.filter(transaccion__in=transacciones_filtradas)
+        debug_info.append(f"📌 Detalles filtrados encontrados: {detalles_filtrados.count()}")
+
+        if detalles_filtrados.count() == 0:
+            debug_info.append("⚠️ No hay detalles de transacciones para este mes y año.")
+
+        # Cálculo de ingresos y egresos
+        for cuenta in cuentas:
+            detalles_cuenta = detalles_filtrados.filter(cuenta=cuenta)
+            saldo_debe = detalles_cuenta.filter(es_debe=True).aggregate(total=Sum('monto'))['total'] or Decimal(0)
+            saldo_haber = detalles_cuenta.filter(es_debe=False).aggregate(total=Sum('monto'))['total'] or Decimal(0)
+            saldo = saldo_haber - saldo_debe
+
+            # Depuración de cada cuenta
+            debug_info.append({
+                'cuenta': cuenta.nombre_cuenta,
+                'categoria': cuenta.id_categoria.nombre_categoria if cuenta.id_categoria else 'Sin Categoría',
+                'saldo_debe': float(saldo_debe),
+                'saldo_haber': float(saldo_haber),
+                'saldo': float(saldo)
+            })
+
+            if cuenta.id_categoria and cuenta.id_categoria.nombre_categoria.strip() == 'Ingresos':
+                ventas_netas += saldo
+            elif cuenta.id_categoria and cuenta.id_categoria.nombre_categoria.strip() == 'Costos/Gastos':
+                if 'Costo de Ventas' in cuenta.nombre_cuenta:
+                    costo_ventas += saldo
+                elif 'Gastos Administrativos' in cuenta.nombre_cuenta:
+                    gastos_administrativos += saldo
+                elif 'Gastos de Ventas' in cuenta.nombre_cuenta:
+                    gastos_venta += saldo
+            elif cuenta.id_categoria and cuenta.id_categoria.nombre_categoria.strip() == 'Otros Ingresos y Gastos':
+                if 'Gastos Financieros' in cuenta.nombre_cuenta:
+                    gastos_financieros += saldo
+                elif 'Otros Gastos' in cuenta.nombre_cuenta:
+                    otros_gastos += saldo
+                elif 'Otros Ingresos' in cuenta.nombre_cuenta:
+                    otros_ingresos += saldo
+
+        utilidad_bruta = ventas_netas - costo_ventas
+        utilidad_operativa = utilidad_bruta - (gastos_administrativos + gastos_venta)
+        utilidad_antes_impuestos = utilidad_operativa + otros_ingresos - (gastos_financieros + otros_gastos)
+        impuestos = utilidad_antes_impuestos * Decimal(0.295) if utilidad_antes_impuestos > 0 else Decimal(0)
+        utilidad_neta = utilidad_antes_impuestos - impuestos
+
+        debug_info.append("✅ Cálculos completados.")
+
+    # Siempre imprimir la información de depuración en la consola
+    print("DEBUG_INFO:", debug_info)
+
+    return render(request, 'estado_resultados.html', {
+        'meses': meses_unicos,
+        'años': años_unicos,
+        'ventas_netas': ventas_netas,
+        'costo_ventas': costo_ventas,
+        'utilidad_bruta': utilidad_bruta,
+        'gastos_administrativos': gastos_administrativos,
+        'gastos_venta': gastos_venta,
+        'utilidad_operativa': utilidad_operativa,
+        'gastos_financieros': gastos_financieros,
+        'otros_gastos': otros_gastos,
+        'otros_ingresos': otros_ingresos,
+        'utilidad_antes_impuestos': utilidad_antes_impuestos,
+        'impuestos': impuestos,
+        'utilidad_neta': utilidad_neta,
+        'debug_info': debug_info
+    })
+
+
+# Estado de Situación Financiera corregido
+def estado_balance_general(request):
+    cuentas = Cuenta.objects.all()
+    meses_unicos, años_unicos = obtener_meses_y_años()
+
+    cuentas_activos = {}
+    cuentas_pasivos = {}
+    cuentas_capital = {}
+    total_activos = 0
+    total_pasivos = 0
+    total_capital = 0
+
     if request.method == 'POST':
         mes = request.POST.get('mes')
         año = request.POST.get('año')
+        
+        try:
+            mes = int(mes) if mes else None
+            año = int(año) if año else None
+        except ValueError:
+            mes = None
+            año = None
 
-        # Calcular saldos para todas las cuentas
+        if not (1 <= mes <= 12) if mes else False:
+            mes = None
+        if not (1900 <= año <= datetime.now().year) if año else False:
+            año = None
+        
         for cuenta in cuentas:
-            # Use detalleTransaccion queries instead of transacciones.filter(id_cuenta_cargo_id=...)
-            transacciones_debe = DetalleTransaccion.objects.filter(
-                transaccion__in=transacciones,
-                es_debe=True,
-                cuenta=cuenta
-            )
-            transacciones_haber = DetalleTransaccion.objects.filter(
-                transaccion__in=transacciones,
-                es_debe=False,
-                cuenta=cuenta
-            )
-
-            # Filtrar por mes y año, si se proporcionan
+            detalles = DetalleTransaccion.objects.filter(cuenta=cuenta)
             if mes and año:
-                transacciones_debe = transacciones_debe.filter(
-                    transaccion__fecha_transaccion__month=mes,
-                    transaccion__fecha_transaccion__year=año
-                )
-                transacciones_haber = transacciones_haber.filter(
-                    transaccion__fecha_transaccion__month=mes,
-                    transaccion__fecha_transaccion__year=año
-                )
+                detalles = detalles.filter(transaccion__fecha_transaccion__month=mes, transaccion__fecha_transaccion__year=año)
+            saldo = detalles.aggregate(total=Sum('monto'))['total'] or 0
+            
+            if cuenta.id_categoria.nombre_categoria == 'Activo':
+                cuentas_activos[cuenta.nombre_cuenta] = saldo
+                total_activos += saldo
+            elif cuenta.id_categoria.nombre_categoria == 'Pasivo':
+                cuentas_pasivos[cuenta.nombre_cuenta] = saldo
+                total_pasivos += saldo
+            elif cuenta.id_categoria.nombre_categoria == 'Patrimonio':
+                cuentas_capital[cuenta.nombre_cuenta] = saldo
+                total_capital += saldo
+    
+    return render(request, 'estado_balance_general.html', locals())
 
-            # Calcular los montos totales
-            total_debe_cuenta = sum(t.monto for t in transacciones_debe)
-            total_haber_cuenta = sum(t.monto for t in transacciones_haber)
+def editar_cuenta(request, id_cuenta):
+    cuenta = get_object_or_404(Cuenta, id_cuenta=id_cuenta)
+    if request.method == 'POST':
+        form = CuentaForm(request.POST, instance=cuenta)
+        if form.is_valid():
+            form.save()
+            return redirect(reverse('registros:listar_cuentas'))  # Redirige con namespace
+    else:
+        form = CuentaForm(instance=cuenta)
+    return render(request, 'editar_cuenta.html', {'form': form, 'cuenta': cuenta})
 
-            # Calcular saldo_deudor y saldo_acreedor
-            saldo_deudor = total_debe_cuenta - total_haber_cuenta if total_debe_cuenta > total_haber_cuenta else 0
-            saldo_acreedor = total_haber_cuenta - total_debe_cuenta if total_haber_cuenta > total_debe_cuenta else 0
+def eliminar_cuenta(request, id_cuenta):
+    cuenta = get_object_or_404(Cuenta, id_cuenta=id_cuenta)
+    if request.method == 'POST':
+        cuenta.delete()
+        return redirect(reverse('registros:listar_cuentas'))  # Redirige con namespace
+    return render(request, 'eliminar_cuenta.html', {'cuenta': cuenta})
 
-            # Almacenar en los diccionarios según el tipo de cuenta
-            if cuenta.id_categoria.nombre_categoria == 'Ingresos':  # Suponiendo que el tipo de cuenta es una cadena
-                cuentas_ingresos[cuenta.nombre_cuenta] = {
-                    'saldo_deudor': saldo_deudor,
-                    'saldo_acreedor': saldo_acreedor
-                }
-                total_ingresos += saldo_acreedor  # Sumar al total de ingresos
-            elif cuenta.id_categoria.nombre_categoria == 'Gastos':  # Suponiendo que el tipo de cuenta es una cadena
-                cuentas_gastos[cuenta.nombre_cuenta] = {
-                    'saldo_deudor': saldo_deudor,
-                    'saldo_acreedor': saldo_acreedor
-                }
-                total_gastos += saldo_deudor  # Sumar al total de gastos
 
-    utilidad_neta = total_ingresos - total_gastos
 
-    return render(request, 'estado_resultados.html', {
-        'cuentas': cuentas,
-        'meses': meses_unicos,
-        'años': años_unicos,
-        'cuentas_ingresos': cuentas_ingresos,  # Pasar el diccionario de ingresos a la plantilla
-        'cuentas_gastos': cuentas_gastos,  # Pasar el diccionario de gastos a la plantilla
-        'total_ingresos': total_ingresos,  # Pasar el total_ingresos a la plantilla
-        'total_gastos': total_gastos,  # Pasar el total_gastos a la plantilla
-        'utilidad_neta': utilidad_neta
-    })
 
-from django.shortcuts import render
+
+# def estado_resultados(request):
+#     cuentas = Cuenta.objects.all()  # Obtener todas las cuentas
+#     transacciones = Transaccion.objects.all()  # Obtener todas las transacciones
+
+#     meses_set = set()
+#     años_set = set()
+
+#     # Agrupar meses y años manualmente
+#     for transaccion in transacciones:
+#         meses_set.add(transaccion.fecha_transaccion.month)
+#         años_set.add(transaccion.fecha_transaccion.year)
+
+#     nombres_meses = [
+#         '', 'enero', 'febrero', 'marzo', 'abril', 
+#         'mayo', 'junio', 'julio', 'agosto', 
+#         'septiembre', 'octubre', 'noviembre', 'diciembre'
+#     ]
+
+#     meses_unicos = [(mes, nombres_meses[mes]) for mes in sorted(meses_set)]
+#     años_unicos = [(año, año) for año in sorted(años_set)]
+
+#     # Inicializar los diccionarios para los saldos de cada cuenta
+#     cuentas_ingresos = {}
+#     cuentas_gastos = {}
+
+#     # Inicializar los totales
+#     total_ingresos = 0
+#     total_gastos = 0
+
+#     # Procesar la solicitud POST
+#     if request.method == 'POST':
+#         mes = request.POST.get('mes')
+#         año = request.POST.get('año')
+
+#         # Calcular saldos para todas las cuentas
+#         for cuenta in cuentas:
+#             # Use detalleTransaccion queries instead of transacciones.filter(id_cuenta_cargo_id=...)
+#             transacciones_debe = DetalleTransaccion.objects.filter(
+#                 transaccion__in=transacciones,
+#                 es_debe=True,
+#                 cuenta=cuenta
+#             )
+#             transacciones_haber = DetalleTransaccion.objects.filter(
+#                 transaccion__in=transacciones,
+#                 es_debe=False,
+#                 cuenta=cuenta
+#             )
+
+#             # Filtrar por mes y año, si se proporcionan
+#             if mes and año:
+#                 transacciones_debe = transacciones_debe.filter(
+#                     transaccion__fecha_transaccion__month=mes,
+#                     transaccion__fecha_transaccion__year=año
+#                 )
+#                 transacciones_haber = transacciones_haber.filter(
+#                     transaccion__fecha_transaccion__month=mes,
+#                     transaccion__fecha_transaccion__year=año
+#                 )
+
+#             # Calcular los montos totales
+#             total_debe_cuenta = sum(t.monto for t in transacciones_debe)
+#             total_haber_cuenta = sum(t.monto for t in transacciones_haber)
+
+#             # Calcular saldo_deudor y saldo_acreedor
+#             saldo_deudor = total_debe_cuenta - total_haber_cuenta if total_debe_cuenta > total_haber_cuenta else 0
+#             saldo_acreedor = total_haber_cuenta - total_debe_cuenta if total_haber_cuenta > total_debe_cuenta else 0
+
+#             # Almacenar en los diccionarios según el tipo de cuenta
+#             if cuenta.id_categoria.nombre_categoria == 'Ingresos':  # Suponiendo que el tipo de cuenta es una cadena
+#                 cuentas_ingresos[cuenta.nombre_cuenta] = {
+#                     'saldo_deudor': saldo_deudor,
+#                     'saldo_acreedor': saldo_acreedor
+#                 }
+#                 total_ingresos += saldo_acreedor  # Sumar al total de ingresos
+#             elif cuenta.id_categoria.nombre_categoria == 'Gastos':  # Suponiendo que el tipo de cuenta es una cadena
+#                 cuentas_gastos[cuenta.nombre_cuenta] = {
+#                     'saldo_deudor': saldo_deudor,
+#                     'saldo_acreedor': saldo_acreedor
+#                 }
+#                 total_gastos += saldo_deudor  # Sumar al total de gastos
+
+#     utilidad_neta = total_ingresos - total_gastos
+
+#     return render(request, 'estado_resultados.html', {
+#         'cuentas': cuentas,
+#         'meses': meses_unicos,
+#         'años': años_unicos,
+#         'cuentas_ingresos': cuentas_ingresos,  # Pasar el diccionario de ingresos a la plantilla
+#         'cuentas_gastos': cuentas_gastos,  # Pasar el diccionario de gastos a la plantilla
+#         'total_ingresos': total_ingresos,  # Pasar el total_ingresos a la plantilla
+#         'total_gastos': total_gastos,  # Pasar el total_gastos a la plantilla
+#         'utilidad_neta': utilidad_neta
+#     })
+
+# from django.shortcuts import render
 
 def estado_capital_contable_propietario(request):
     cuentas = Cuenta.objects.all()  # Obtener todas las cuentas
@@ -825,22 +1047,4 @@ def estado_flujo_efectivo(request):
         'efectivo_saldo_meses_anteriores': efectivo_saldo_meses_anteriores,  # Pasar saldos de meses 
         'saldo_efectivo_ultimo_dia_mes': saldo_efectivo_ultimo_dia_mes
     })
-
-def editar_cuenta(request, id_cuenta):
-    cuenta = get_object_or_404(Cuenta, id_cuenta=id_cuenta)
-    if request.method == 'POST':
-        form = CuentaForm(request.POST, instance=cuenta)
-        if form.is_valid():
-            form.save()
-            return redirect(reverse('registros:listar_cuentas'))  # Redirige con namespace
-    else:
-        form = CuentaForm(instance=cuenta)
-    return render(request, 'editar_cuenta.html', {'form': form, 'cuenta': cuenta})
-
-def eliminar_cuenta(request, id_cuenta):
-    cuenta = get_object_or_404(Cuenta, id_cuenta=id_cuenta)
-    if request.method == 'POST':
-        cuenta.delete()
-        return redirect(reverse('registros:listar_cuentas'))  # Redirige con namespace
-    return render(request, 'eliminar_cuenta.html', {'cuenta': cuenta})
 
