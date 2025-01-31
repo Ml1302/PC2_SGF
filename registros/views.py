@@ -6,7 +6,7 @@ from .models import Cuenta, Transaccion, Categoria_ecuacion_contable
 from .forms import CuentaForm, TransaccionForm
 from .models import Cuenta, Transaccion, DetalleTransaccion
 from decimal import Decimal
-
+from decimal import ROUND_DOWN
 # Vista para crear una cuenta
 def crear_cuenta(request):
     if request.method == 'POST':
@@ -266,16 +266,21 @@ def estado_resultados(request):
     meses_unicos, años_unicos = obtener_meses_y_años()
 
     # Inicialización de datos
-    ingresos = {}
-    costos_gastos = {}
+    ventas_netas = Decimal(0)
+    costo_ventas = Decimal(0)
     utilidad_bruta = Decimal(0)
+    gastos_administrativos = Decimal(0)
+    gastos_ventas = Decimal(0)
     utilidad_operativa = Decimal(0)
+    gastos_financieros = Decimal(0)
+    otros_gastos = Decimal(0)
+    otros_ingresos = Decimal(0)
     utilidad_antes_impuestos = Decimal(0)
     impuestos = Decimal(0)
     utilidad_neta = Decimal(0)
 
-    debug_info = []
-    debug_info.append("Iniciando procesamiento de Estado de Resultados.")
+    debug_info = ["Iniciando procesamiento de Estado de Resultados."]
+    mes, anio = None, None
 
     if request.method == 'POST':
         mes = request.POST.get('mes')
@@ -288,53 +293,83 @@ def estado_resultados(request):
             mes, anio = None, None
 
         if not anio:
+            debug_info.append("Año no especificado. No se puede continuar.")
             return render(request, 'estado_resultados.html', {
+                'meses': meses_unicos,
+                'años': años_unicos,
                 'error': 'Debe seleccionar un año.',
-                'debug_info': debug_info,
+                'debug_info': debug_info
             })
 
+        # Filtrar transacciones
         transacciones_filtradas = Transaccion.objects.filter(fecha_transaccion__year=anio)
         if mes:
             transacciones_filtradas = transacciones_filtradas.filter(fecha_transaccion__month=mes)
 
         debug_info.append(f"Transacciones filtradas encontradas: {transacciones_filtradas.count()}")
+
+        # Filtrar detalles
         detalles_filtrados = DetalleTransaccion.objects.filter(transaccion__in=transacciones_filtradas)
 
+        # Procesar las cuentas según el código de cuenta
         for cuenta in cuentas:
             detalles_cuenta = detalles_filtrados.filter(cuenta=cuenta)
             saldo_debe = detalles_cuenta.filter(es_debe=True).aggregate(total=Sum('monto'))['total'] or Decimal(0)
             saldo_haber = detalles_cuenta.filter(es_debe=False).aggregate(total=Sum('monto'))['total'] or Decimal(0)
             saldo = saldo_haber - saldo_debe
 
-            categoria = cuenta.id_categoria.nombre_categoria if cuenta.id_categoria else 'Sin Categoría'
-            if categoria == 'Ingresos':
-                ingresos[cuenta.nombre_cuenta] = saldo
-            elif categoria == 'Costos/Gastos':
-                costos_gastos[cuenta.nombre_cuenta] = saldo
+            if str(cuenta.id_cuenta).startswith('70'):  # Ventas
+                ventas_netas += saldo
+            elif str(cuenta.id_cuenta).startswith('69'):  # Costo de Ventas
+                costo_ventas += saldo
+            elif str(cuenta.id_cuenta).startswith('67'):  # Gastos Financieros
+                gastos_financieros += saldo
+            elif str(cuenta.id_cuenta).startswith('65'):  # Otros Gastos
+                otros_gastos += saldo
+            elif str(cuenta.id_cuenta).startswith('75'):  # Otros Ingresos
+                otros_ingresos += saldo
+
+            elif cuenta.id_categoria and cuenta.id_categoria.nombre_categoria == 'Costos/Gastos':
+                if 'Gastos administrativos' in cuenta.nombre_cuenta:
+                    gastos_administrativos += saldo
+                elif 'Gastos de ventas' in cuenta.nombre_cuenta:
+                    gastos_ventas += saldo
 
         # Calcular subtotales
-        subtotal_ingresos = sum(ingresos.values())
-        subtotal_costos_gastos = sum(costos_gastos.values())
-
-        utilidad_bruta = subtotal_ingresos - subtotal_costos_gastos
-        utilidad_operativa = utilidad_bruta
-        utilidad_antes_impuestos = utilidad_operativa
-        impuestos = utilidad_antes_impuestos * Decimal(0.295) if utilidad_antes_impuestos > 0 else Decimal(0)
+        utilidad_bruta = ventas_netas - costo_ventas
+        utilidad_operativa = utilidad_bruta - (gastos_administrativos + gastos_ventas)
+        utilidad_antes_impuestos = utilidad_operativa + otros_ingresos - (gastos_financieros + otros_gastos)
+        impuestos = (utilidad_antes_impuestos * Decimal(0.295)).quantize(Decimal('0.00'), rounding=ROUND_DOWN) if utilidad_antes_impuestos > 0 else Decimal(0)
         utilidad_neta = utilidad_antes_impuestos - impuestos
 
-    print(debug_info)
+        debug_info.append(f"Ventas netas: {ventas_netas}, Costo de ventas: {costo_ventas}")
+        debug_info.append(f"Gastos administrativos: {gastos_administrativos}, Gastos de ventas: {gastos_ventas}")
+        debug_info.append(f"Gastos financieros: {gastos_financieros}, Otros gastos: {otros_gastos}, Otros ingresos: {otros_ingresos}")
+        debug_info.append(f"Utilidad antes de impuestos: {utilidad_antes_impuestos}, Impuestos: {impuestos}, Utilidad neta: {utilidad_neta}")
+
+    # Siempre imprimir la depuración
+    print("DEBUG_INFO:", debug_info)
+
     return render(request, 'estado_resultados.html', {
         'meses': meses_unicos,
         'años': años_unicos,
-        'ingresos': ingresos,
-        'costos_gastos': costos_gastos,
+        'ventas_netas': ventas_netas,
+        'costo_ventas': costo_ventas,
         'utilidad_bruta': utilidad_bruta,
+        'gastos_administrativos': gastos_administrativos,
+        'gastos_ventas': gastos_ventas,
         'utilidad_operativa': utilidad_operativa,
+        'gastos_financieros': gastos_financieros,
+        'otros_gastos': otros_gastos,
+        'otros_ingresos': otros_ingresos,
         'utilidad_antes_impuestos': utilidad_antes_impuestos,
         'impuestos': impuestos,
         'utilidad_neta': utilidad_neta,
-        'debug_info': debug_info
+        'debug_info': debug_info,
+        'mes_seleccionado': dict(meses_unicos).get(mes) if mes else None,
+        'año_seleccionado': anio,
     })
+
 
 def estado_balance_general(request):
     cuentas = Cuenta.objects.all()
@@ -397,7 +432,7 @@ def estado_balance_general(request):
             detalles_cuenta = detalles_filtrados.filter(cuenta=cuenta)
             saldo_debe = detalles_cuenta.filter(es_debe=True).aggregate(total=Sum('monto'))['total'] or 0
             saldo_haber = detalles_cuenta.filter(es_debe=False).aggregate(total=Sum('monto'))['total'] or 0
-            saldo = saldo_haber - saldo_debe
+            saldo = abs(saldo_haber - saldo_debe)
 
             if cuenta.id_categoria.nombre_categoria == 'Activos':
                 activos[cuenta.nombre_cuenta] = saldo
